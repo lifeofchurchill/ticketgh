@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.core.validators import MinValueValidator
 
 
 class Event(models.Model):
@@ -49,3 +50,38 @@ class Event(models.Model):
     def clean(self):
         if self.starts_at and self.ends_at and self.ends_at <= self.starts_at:
             raise ValidationError({"ends_at": "The event must end after it starts."})
+
+class TicketType(models.Model):
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        related_name="ticket_types",
+    )
+    name = models.CharField(max_length=100)
+    description = models.CharField(max_length=255, blank=True)
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+    )
+    quantity = models.PositiveIntegerField()
+    sales_start = models.DateTimeField(null=True, blank=True)
+    sales_end = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["price"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "name"],
+                name="unique_ticket_name_per_event",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.event.title}: {self.name}"
+
+    def clean(self):
+        if self.sales_start and self.sales_end and self.sales_end <= self.sales_start:
+            raise ValidationError({"sales_end": "Sales must end after they start."})
