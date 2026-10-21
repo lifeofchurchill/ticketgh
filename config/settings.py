@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'users',
     'rest_framework',
+    'django_filters',
     'events',
 ]
 
@@ -125,3 +126,11 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = "users.User"
+
+# Settings for Django REST Framework, applied to the whole API
+REST_FRAMEWORK = {
+    # Split long lists into numbered pages: ?page=1, ?page=2, ...
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    # How many items per page (spec section 4.2)
+    "PAGE_SIZE": 20,
+}
