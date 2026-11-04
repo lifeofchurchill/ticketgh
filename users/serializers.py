@@ -27,3 +27,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Use our manager so the password is hashed, never stored as plain text
         return User.objects.create_user(**validated_data)
+
+# Shows the logged-in user's own profile, and lets them edit their name
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "email", "first_name", "last_name", "role"]
+        # These can be seen but not changed through this endpoint
+        read_only_fields = ["id", "email", "role"]

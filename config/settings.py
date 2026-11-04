@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -129,8 +130,23 @@ AUTH_USER_MODEL = "users.User"
 
 # Settings for Django REST Framework, applied to the whole API
 REST_FRAMEWORK = {
+    # How the API works out who is making a request
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",  # apps: Bearer tokens
+        "rest_framework.authentication.SessionAuthentication",        # browser: admin login
+    ],
+    # By default, every endpoint requires a logged-in user
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     # Split long lists into numbered pages: ?page=1, ?page=2, ...
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     # How many items per page (spec section 4.2)
     "PAGE_SIZE": 20,
+}
+
+# Token lifetimes (spec section 9)
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),  # short: limits damage if stolen
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),     # long: avoids constant re-login
 }
