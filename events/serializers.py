@@ -51,8 +51,8 @@ def make_unique_slug(title):
     return slug
 
 
-# Checks the data an organizer sends to create an event
-class EventCreateSerializer(serializers.ModelSerializer):
+# Checks the data an organizer sends to create (POST) or edit (PATCH) an event
+class EventWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = [
@@ -72,10 +72,16 @@ class EventCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "slug", "status"]
 
     def validate(self, attrs):
-        # Rules that compare several fields together
-        if attrs["starts_at"] <= timezone.now():
+        # self.instance is None when creating, or the existing event when editing.
+        # On edits, a field that wasn't sent keeps its current value.
+        instance = self.instance
+        starts_at = attrs.get("starts_at", instance.starts_at if instance else None)
+        ends_at = attrs.get("ends_at", instance.ends_at if instance else None)
+
+        # Only insist on a future start when a start time is being set
+        if "starts_at" in attrs and starts_at <= timezone.now():
             raise serializers.ValidationError({"starts_at": "The event must start in the future."})
-        if attrs["ends_at"] <= attrs["starts_at"]:
+        if ends_at <= starts_at:
             raise serializers.ValidationError({"ends_at": "The event must end after it starts."})
         return attrs
 

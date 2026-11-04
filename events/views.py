@@ -1,10 +1,13 @@
+from django.db.models import Q
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, permissions
+from rest_framework.exceptions import ValidationError
+
 from .filters import EventFilter
 from .models import Event
-from .permissions import IsOrganizer
-from .serializers import EventCreateSerializer, EventDetailSerializer, EventListSerializer
+from .permissions import IsEventOwner, IsOrganizer
+from .serializers import EventDetailSerializer, EventListSerializer, EventWriteSerializer
 
 
 # GET  /api/v1/events/ : public list of upcoming published events
@@ -29,7 +32,7 @@ class EventListCreateView(generics.ListCreateAPIView):
     def get_serializer_class(self):
         # Different translators for different methods
         if self.request.method == "POST":
-            return EventCreateSerializer    # checks incoming event data
+            return EventWriteSerializer     # checks incoming event data
         return EventListSerializer          # short version for event cards
 
     def get_queryset(self):
@@ -44,12 +47,34 @@ class EventListCreateView(generics.ListCreateAPIView):
         serializer.save(organizer=self.request.user)
 
 
-# GET /api/v1/events/<slug>/ : full details of one published event
-class EventDetailView(generics.RetrieveAPIView):
-    serializer_class = EventDetailSerializer  # full version, with ticket types
-    permission_classes = [permissions.AllowAny]  # public: guests can browse events
-    lookup_field = "slug"                     # find the event by its slug, not its ID
+# GET    /api/v1/events/<slug>/ : anyone views a published event (owners also see drafts)
+# PATCH  /api/v1/events/<slug>/ : the owner edits their event
+# DELETE /api/v1/events/<slug>/ : the owner deletes their draft
+class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
+    lookup_field = "slug"                                     # find events by slug
+    http_method_names = ["get", "patch", "delete", "head", "options"]  # no PUT
+
+    def get_permissions(self):
+        # Reading is open; changing needs an organizer who owns this event
+        if self.request.method in permissions.SAFE_METHODS:
+            return [permissions.AllowAny()]
+        return [IsOrganizer(), IsEventOwner()]
+
+    def get_serializer_class(self):
+        if self.request.method == "PATCH":
+            return EventWriteSerializer     # same rules as creating
+        return EventDetailSerializer        # full details with ticket types
 
     def get_queryset(self):
-        # Only published events can be viewed; drafts return 404 Not Found
-        return Event.objects.filter(status=Event.Status.PUBLISHED)
+        # Everyone can find published events
+        visible = Q(status=Event.Status.PUBLISHED)
+        # Logged-in users can also find their own events, including drafts
+        if self.request.user.is_authenticated:
+            visible = visible | Q(organizer=self.request.user)
+        return Event.objects.filter(visible)
+
+    def perform_destroy(self, instance):
+        # Spec: only drafts can be deleted; published events must be cancelled instead
+        if instance.status != Event.Status.DRAFT:
+            raise ValidationError("Only draft events can be deleted.")
+        instance.delete()

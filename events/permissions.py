@@ -1,5 +1,4 @@
 from rest_framework import permissions
-
 from users.models import User
 
 
@@ -14,3 +13,11 @@ class IsOrganizer(permissions.BasePermission):
             request.user.is_authenticated
             and request.user.role == User.Role.ORGANIZER
         )
+
+# Allows changes only to events the logged-in user organizes
+class IsEventOwner(permissions.BasePermission):
+    message = "You can only change your own events."
+
+    def has_object_permission(self, request, view, obj):
+        # obj is the specific event being touched; DRF passes it in
+        return obj.organizer == request.user
