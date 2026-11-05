@@ -148,8 +148,8 @@ class EventPublishView(generics.GenericAPIView):
         # Spec rule 3: check everything before publishing
         if event.status != Event.Status.DRAFT:
             raise ValidationError("Only draft events can be published.")
-        #if not event.ticket_types.exists():
-            #raise ValidationError("Add at least one ticket type before publishing.")
+        if not event.ticket_types.exists():
+            raise ValidationError("Add at least one ticket type before publishing.")
         if event.starts_at <= timezone.now():
             raise ValidationError("This event has already started.")
 
