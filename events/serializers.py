@@ -10,6 +10,29 @@ class TicketTypeSerializer(serializers.ModelSerializer):
         model = TicketType
         fields = ["id", "name", "description", "price", "sales_start", "sales_end"]
 
+    # Checks the data an owner sends to add a ticket type to their event
+class TicketTypeWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TicketType
+        # Owners send quantity too; the public version hides it
+        fields = ["id", "name", "description", "price", "quantity", "sales_start", "sales_end"]
+        read_only_fields = ["id"]
+
+    def validate_name(self, value):
+        # The view passes the event in; one event can't have two tickets with the same name
+        event = self.context["event"]
+        if TicketType.objects.filter(event=event, name__iexact=value).exists():
+            raise serializers.ValidationError("This event already has a ticket type with this name.")
+        return value
+
+    def validate(self, attrs):
+        # Same rule as TicketType.clean(): DRF doesn't call the model's clean()
+        sales_start = attrs.get("sales_start")
+        sales_end = attrs.get("sales_end")
+        if sales_start and sales_end and sales_end <= sales_start:
+            raise serializers.ValidationError({"sales_end": "Sales must end after they start."})
+        return attrs
+
 
 # Short version of an event, for the list of event cards
 class EventListSerializer(serializers.ModelSerializer):
