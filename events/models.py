@@ -2,6 +2,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.core.validators import MinValueValidator
+from django.db.models import Q, Sum
+from django.utils import timezone
 
 
 class Event(models.Model):
@@ -85,3 +87,18 @@ class TicketType(models.Model):
     def clean(self):
         if self.sales_start and self.sales_end and self.sales_end <= self.sales_start:
             raise ValidationError({"sales_end": "Sales must end after they start."})
+
+    def tickets_taken(self):
+        # Tickets that are gone: paid for, or held by a pending order that hasn't expired
+        from orders.models import Order  # imported here to avoid a circular import
+
+        taken = self.order_items.filter(
+            Q(order__status=Order.Status.PAID)
+            | Q(order__status=Order.Status.PENDING, order__expires_at__gt=timezone.now())
+        ).aggregate(total=Sum("quantity"))["total"]
+        return taken or 0
+
+    @property
+    def available(self):
+        # Tickets still on sale right now (never below zero)
+        return max(self.quantity - self.tickets_taken(), 0)

@@ -6,9 +6,12 @@ from .models import Event, TicketType
 
 # Translates a TicketType into JSON (used inside the event detail)
 class TicketTypeSerializer(serializers.ModelSerializer):
+    # Reads the "available" property on the model: tickets still on sale
+    available = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = TicketType
-        fields = ["id", "name", "description", "price", "sales_start", "sales_end"]
+        fields = ["id", "name", "description", "price", "available", "sales_start", "sales_end"]
 
     # Checks the data an owner sends to add a ticket type to their event
 class TicketTypeWriteSerializer(serializers.ModelSerializer):
