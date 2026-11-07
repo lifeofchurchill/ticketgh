@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django_filters',
     'events',
     'orders',
+    'payments',
 ]
 
 MIDDLEWARE = [
