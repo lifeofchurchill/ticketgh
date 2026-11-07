@@ -154,3 +154,6 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),  # short: limits damage if stolen
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),     # long: avoids constant re-login
 }
+
+# Paystack: the secret key decides test or live mode (sk_test_... or sk_live_...)
+PAYSTACK_SECRET_KEY = env("PAYSTACK_SECRET_KEY")
