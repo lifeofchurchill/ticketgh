@@ -63,6 +63,7 @@ class EventDetailSerializer(EventListSerializer):
         fields = EventListSerializer.Meta.fields + [
             "description",
             "address",
+            "status", # so apps can show "Cancelled"
             "ticket_types",
         ]
 

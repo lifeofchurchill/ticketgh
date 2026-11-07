@@ -5,6 +5,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, permissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from .services import cancel_event
 
 from .filters import EventFilter
 from .models import Event, TicketType
@@ -18,9 +19,9 @@ from .serializers import (
 )
 
 
-# Events this user may see: published ones, plus their own (including drafts)
+# Events this user may see: published and cancelled ones, plus their own (including drafts)
 def visible_events(user):
-    visible = Q(status=Event.Status.PUBLISHED)
+    visible = Q(status__in=[Event.Status.PUBLISHED, Event.Status.CANCELLED])
     if user.is_authenticated:
         visible = visible | Q(organizer=user)
     return Event.objects.filter(visible)
@@ -157,3 +158,22 @@ class EventPublishView(generics.GenericAPIView):
         event.status = Event.Status.PUBLISHED
         event.save(update_fields=["status", "updated_at"])
         return Response(self.get_serializer(event).data)
+
+# POST /api/v1/events/<slug>/cancel/ : the owner cancels their event
+class EventCancelView(generics.GenericAPIView):
+    lookup_field = "slug"
+    permission_classes = [IsOrganizer, IsEventOwner]  # same rules as publishing
+    serializer_class = EventDetailSerializer          # used for the reply
+
+    def get_queryset(self):
+        # Organizers can only ever cancel their own events
+        return Event.objects.filter(organizer=self.request.user)
+
+    def post(self, request, *args, **kwargs):
+        event = self.get_object()      # finds the event and runs IsEventOwner
+        result = cancel_event(event)   # the rules and every change, in one transaction
+        return Response({
+            "event": self.get_serializer(result["event"]).data,
+            "refunds_pending": result["refunds_pending"],  # paid buyers to refund
+            "holds_released": result["holds_released"],    # pending orders stopped
+        })

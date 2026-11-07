@@ -11,4 +11,6 @@ urlpatterns = [
     path("events/<slug:slug>/ticket-types/", views.TicketTypeListCreateView.as_view(), name="ticket-type-list"),
     # POST: the owner publishes their draft
     path("events/<slug:slug>/publish/", views.EventPublishView.as_view(), name="event-publish"),
+        # POST: the owner cancels their event
+    path("events/<slug:slug>/cancel/", views.EventCancelView.as_view(), name="event-cancel"),
 ]
