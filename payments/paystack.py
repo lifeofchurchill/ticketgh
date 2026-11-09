@@ -1,3 +1,6 @@
+import hashlib
+import hmac
+
 from decimal import Decimal
 
 import requests
@@ -49,3 +52,14 @@ def initialize_transaction(email, amount, reference):
     if response.status_code != 200 or not body.get("status"):
         raise PaystackError(body.get("message", "Paystack refused the request."))
     return body["data"]
+
+
+def is_valid_signature(raw_body, signature):
+    # Paystack signs each webhook: HMAC-SHA512 of the raw body, using our secret key
+    expected = hmac.new(
+        settings.PAYSTACK_SECRET_KEY.encode(),  # the key, as bytes
+        raw_body,                               # the exact bytes Paystack sent
+        hashlib.sha512,
+    ).hexdigest()
+    # Compare in constant time, so the check can't be timed to leak the answer
+    return hmac.compare_digest(expected, signature)
