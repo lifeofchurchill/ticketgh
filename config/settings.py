@@ -31,7 +31,8 @@ SECRET_KEY = env("SECRET_KEY")
 # Detailed error pages; off unless .env switches it on
 DEBUG = env.bool("DEBUG", default=False)
 
-ALLOWED_HOSTS = []
+# Domain names this server will answer to; read from .env
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 
 # Application definition
